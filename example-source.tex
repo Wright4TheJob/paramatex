@@ -1,0 +1,26 @@
+\documentclass[a4paper,12pt]{letter}
+
+% Some of the article customisations are relevant for this class
+
+\name{{from-name}} % To be used for the return address on the envelope
+\signature{} % Goes after the closing (ie at the end of the letter, with space for a signature)
+\address{{to-name}}
+% Alternatively, these may be set on an individual basis within each letter environment.
+
+\makelabels % this command prints envelope labels on the final page of the document
+
+\begin{document}
+\begin{letter}{{to-name}\\{to-address}}
+
+\opening{Hello,} % eg Hello.
+This is an example of the ParamaTeX substitution program. It takes a variable and replaces it with the desired data. So rather than seeing a generic variable, {to-name} sees their own name on the header. 
+
+
+\closing{Regards,} % eg Regards,
+
+\cc{} % people this letter is cc-ed to
+\encl{} % list of anything enclosed
+\ps{} % any post scriptums. ``PS'' labels must be put in manually
+
+\end{letter}
+\end{document}
