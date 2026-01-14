@@ -1,20 +1,18 @@
 use std::collections::HashMap;
-use std::fs;
-use calamine::{HeaderRow, open_workbook, Error,Ods, Xlsx, Reader, RangeDeserializerBuilder};
-use serde::Deserialize;
+use std::{fs, path::PathBuf};
+use calamine::{HeaderRow, open_workbook, Ods, Reader};
+use iced::Alignment::Center;
+use iced::widget::{button, center, column};
+use iced::{Element, Theme};
 
-fn main() {
+fn substitute() {
 
     let path = format!("{}/example-parameters.ods", env!("CARGO_MANIFEST_DIR"));
     let mut excel: Ods<_> = open_workbook(path).unwrap();
 
     let mut text_string = fs::read_to_string("example-source.tex").expect("Unable to read file");
-let sheet1 = excel
-    .with_header_row(HeaderRow::Row(3))
-    .worksheet_range("Sheet1")
-    .unwrap();
 
-let sheet1 = excel
+    let sheet1 = excel
     .with_header_row(HeaderRow::Row(1))
     .worksheet_range("Sheet1")
     .unwrap();
@@ -33,33 +31,104 @@ let sheet1 = excel
         text_string = text_string.replace(key, value);
     }
     fs::write("example-output.tex", text_string).expect("Unable to write file");
-//    #[serde(deserialize_with = "deserialize_as_f64_or_none")]
-//    value: String,
-//}
+}
 
-//fn example() -> Result<HashMap<String, String>, Error> {
-//    let path = format!("{}/example-parameters.ods", env!("CARGO_MANIFEST_DIR"));
-//    let mut workbook: Ods<_> = open_workbook(path)?;
-//    let range = workbook.worksheet_range("Sheet1")?;
-//
- //   let mut iter = RangeDeserializerBuilder::new().from_range(&range)?;
-//
-//    let iter_records = RangeDeserializerBuilder::with_headers(&["Key", "Value"]).from_range(&range)?;
-//
- //   let mut key_values = HashMap::new();
-//    key_values.insert("One".to_string(), "Two".to_string());
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+enum Error {
+    InvalidImage,
+}
 
-  //  for result in iter_records {
-//        let record: Record = result?;
-//        println!("{:?}", result);
-        // println!("metric={:?}, value={:?}", record.metric, record.value);
-        //key_values.push((record.Key, record.Value))
-//    }
-//    return Ok(key_values) 
-//}
+#[derive(Debug, Clone)]
+enum File {
+    Parameters,
+    Template,
+    Output,
+}
 
-//fn main() {
- //   let output = example();
- //   println!("{:?}",output);
-    
+#[derive(Debug, Clone)]
+enum Message {
+    WriteOutput,
+    OpenParameters,
+    OpenTemplate,
+    FileCancelled,
+    FileWritten,
+    FileSelected,
+}
+
+#[derive(Default, Clone)]
+struct State {
+    parameters_path: Option<PathBuf>,
+    template_path: Option<PathBuf>,
+    output_path: Option<PathBuf>,
+    output_filename: Option<String>,
+}
+
+#[derive(Default)]
+struct App {
+    state: State,
+}
+
+impl App {
+    pub fn new() -> Self {
+        Self {
+            state: State::default(),
+        }
+    }
+    pub fn view(&self) -> Element<'_, Message> {
+        let write_button = if self.state.parameters_path.is_some() && self.state.template_path.is_some() && self.state.output_path.is_some() && self.state.output_filename.is_some() {
+            button("Write Output File").on_press(Message::WriteOutput)
+        } else {
+            button("Write Output File")
+        };
+        center(
+            column![button("Select Parameters Spreadsheet").on_press(Message::OpenParameters),]
+                .push(button("Select LaTeX Template").on_press(Message::OpenTemplate))
+                .push(write_button)
+                .align_x(Center),
+        )
+        .into()
+    }
+
+    pub fn update(&mut self, message: Message) {
+        match message {
+            Message::OpenParameters => self.open_filepath(File::Parameters),
+            Message::OpenTemplate => self.open_filepath(File::Template),
+            Message::WriteOutput => substitute(),
+            Message::FileCancelled => (),
+            Message::FileWritten => (),
+            Message::FileSelected => (),
+        }
+        
+    }
+
+
+pub fn open_filepath(&mut self, filetype: File){
+    let types = match filetype {
+        File::Parameters => vec!("xlsx", "xls", "ods"),
+        File::Template => vec!("tex"),
+        File::Output => vec!("tex"),
+    };
+
+    let path_buf = rfd::FileDialog::new()
+        .add_filter(
+            "Spreadsheet Formats",
+                types.as_slice()
+            )
+            .pick_file();
+    match filetype {
+        File::Parameters => {
+            self.state.parameters_path = path_buf.clone();
+        },
+        File::Template => {
+            self.state.template_path = path_buf.clone();
+        },
+        File::Output => {
+            self.state.output_path = path_buf.clone();
+        },
+    } 
+}
+}
+fn main() -> iced::Result {
+    iced::application(  App::new, App::update, App::view).theme(Theme::Dark).centered().run()
 }

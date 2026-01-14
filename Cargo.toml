@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 calamine = "0.32"
 serde = "1.0"
+iced = {version="0.14",features=["image"]}
+rfd = "0.17"
