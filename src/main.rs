@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::{fs, path::PathBuf};
 use calamine::{HeaderRow, open_workbook, Ods, Reader};
 use iced::Alignment::Center;
-use iced::widget::{button, center, column};
+use iced::widget::{button, center, column, row, text, text_input};
 use iced::{Element, Theme};
 
 fn substitute() {
@@ -51,7 +51,9 @@ enum Message {
     WriteOutput,
     OpenParameters,
     OpenTemplate,
+    OpenOutputDirectory,
     FileCancelled,
+    OutputFilenameUpdated(String),
     FileWritten,
     FileSelected,
 }
@@ -61,7 +63,7 @@ struct State {
     parameters_path: Option<PathBuf>,
     template_path: Option<PathBuf>,
     output_path: Option<PathBuf>,
-    output_filename: Option<String>,
+    output_filename: String,
 }
 
 #[derive(Default)]
@@ -76,14 +78,31 @@ impl App {
         }
     }
     pub fn view(&self) -> Element<'_, Message> {
-        let write_button = if self.state.parameters_path.is_some() && self.state.template_path.is_some() && self.state.output_path.is_some() && self.state.output_filename.is_some() {
+        let write_button = if self.state.parameters_path.is_some() && self.state.template_path.is_some() && self.state.output_path.is_some() && self.state.output_filename != "" {
             button("Write Output File").on_press(Message::WriteOutput)
         } else {
             button("Write Output File")
         };
         center(
-            column![button("Select Parameters Spreadsheet").on_press(Message::OpenParameters),]
-                .push(button("Select LaTeX Template").on_press(Message::OpenTemplate))
+            column![
+                row![
+                    button("Select Parameters Spreadsheet").on_press(Message::OpenParameters),
+                    text(format!("{:?}",self.state.parameters_path))]]
+                .push(
+                    row![
+                        button("Select LaTeX Template").on_press(Message::OpenTemplate),
+                        text(format!("{:?}",self.state.template_path))])
+                .push(
+                    row![
+                    button("Select Output Directory").on_press(Message::OpenOutputDirectory),
+                    text(format!("{:?}",self.state.output_path))]
+                )
+                .push(
+                    row![
+                        text("Output filename: "),
+                        text_input("Filename", &self.state.output_filename).on_input(Message::OutputFilenameUpdated)
+                    ]
+                )
                 .push(write_button)
                 .align_x(Center),
         )
@@ -94,7 +113,9 @@ impl App {
         match message {
             Message::OpenParameters => self.open_filepath(File::Parameters),
             Message::OpenTemplate => self.open_filepath(File::Template),
+            Message::OpenOutputDirectory => self.open_filepath(File::Output),
             Message::WriteOutput => substitute(),
+            Message::OutputFilenameUpdated(new_name) => self.state.output_filename = new_name,
             Message::FileCancelled => (),
             Message::FileWritten => (),
             Message::FileSelected => (),
@@ -107,15 +128,18 @@ pub fn open_filepath(&mut self, filetype: File){
     let types = match filetype {
         File::Parameters => vec!("xlsx", "xls", "ods"),
         File::Template => vec!("tex"),
-        File::Output => vec!("tex"),
+        File::Output => vec!(),
     };
 
-    let path_buf = rfd::FileDialog::new()
+    let fd = rfd::FileDialog::new()
         .add_filter(
-            "Spreadsheet Formats",
+            "Format",
                 types.as_slice()
-            )
-            .pick_file();
+            );
+    let path_buf = match filetype {
+        File::Parameters | File::Template => fd.pick_file(),
+        File::Output => fd.pick_folder(),
+    };
     match filetype {
         File::Parameters => {
             self.state.parameters_path = path_buf.clone();
