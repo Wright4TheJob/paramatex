@@ -5,33 +5,6 @@ use iced::Alignment::Center;
 use iced::widget::{button, center, column, row, text, text_input};
 use iced::{Element, Theme};
 
-fn substitute() {
-
-    let path = format!("{}/example-parameters.ods", env!("CARGO_MANIFEST_DIR"));
-    let mut excel: Ods<_> = open_workbook(path).unwrap();
-
-    let mut text_string = fs::read_to_string("example-source.tex").expect("Unable to read file");
-
-    let sheet1 = excel
-    .with_header_row(HeaderRow::Row(1))
-    .worksheet_range("Sheet1")
-    .unwrap();
-    let mut values: HashMap<String, String> = HashMap::new();
-    for row in 0..sheet1.height() {
-        let key = sheet1.get_value((row as u32, 1 as u32)); 
-        let value = sheet1.get_value((row as u32, 2 as u32));
-        if key.is_some() && value.is_some() {
-            values.insert(
-                key.unwrap().to_string(),
-                value.unwrap().to_string(),
-            );
-        } 
-    }
-    for (key, value) in values.iter() {
-        text_string = text_string.replace(key, value);
-    }
-    fs::write("example-output.tex", text_string).expect("Unable to write file");
-}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -52,10 +25,7 @@ enum Message {
     OpenParameters,
     OpenTemplate,
     OpenOutputDirectory,
-    FileCancelled,
     OutputFilenameUpdated(String),
-    FileWritten,
-    FileSelected,
 }
 
 #[derive(Default, Clone)]
@@ -114,44 +84,60 @@ impl App {
             Message::OpenParameters => self.open_filepath(File::Parameters),
             Message::OpenTemplate => self.open_filepath(File::Template),
             Message::OpenOutputDirectory => self.open_filepath(File::Output),
-            Message::WriteOutput => substitute(),
+            Message::WriteOutput => {
+                let mut output_path = self.state.output_path.clone().unwrap();
+                output_path.push(self.state.output_filename.clone());
+                output_path.push(".tex");
+                substitute(self.state.parameters_path.clone().unwrap(), self.state.template_path.clone().unwrap(), output_path);
+            },
             Message::OutputFilenameUpdated(new_name) => self.state.output_filename = new_name,
-            Message::FileCancelled => (),
-            Message::FileWritten => (),
-            Message::FileSelected => (),
         }
-        
     }
 
-
 pub fn open_filepath(&mut self, filetype: File){
-    let types = match filetype {
-        File::Parameters => vec!("xlsx", "xls", "ods"),
-        File::Template => vec!("tex"),
-        File::Output => vec!(),
-    };
-
-    let fd = rfd::FileDialog::new()
-        .add_filter(
-            "Format",
-                types.as_slice()
-            );
-    let path_buf = match filetype {
-        File::Parameters | File::Template => fd.pick_file(),
-        File::Output => fd.pick_folder(),
-    };
     match filetype {
         File::Parameters => {
-            self.state.parameters_path = path_buf.clone();
+            self.state.parameters_path = rfd::FileDialog::new()
+                .add_filter("Spreadsheet Formats",vec!("xlsx", "xls", "ods").as_slice())
+                .pick_file();
         },
         File::Template => {
-            self.state.template_path = path_buf.clone();
+            self.state.template_path = rfd::FileDialog::new()
+                .add_filter("LaTeX Formats",vec!("tex").as_slice())
+                .pick_file();
         },
         File::Output => {
-            self.state.output_path = path_buf.clone();
-        },
-    } 
+            self.state.output_path = rfd::FileDialog::new()
+                .pick_folder();
+        }
+    }
 }
+}
+fn substitute(param_path: PathBuf, template_path: PathBuf, output_path: PathBuf) {
+
+    let mut excel: Ods<_> = open_workbook(param_path).unwrap();
+
+    let mut text_string = fs::read_to_string(template_path).expect("Unable to read file");
+
+    let sheet1 = excel
+    .with_header_row(HeaderRow::Row(1))
+    .worksheet_range("Sheet1")
+    .unwrap();
+    let mut values: HashMap<String, String> = HashMap::new();
+    for row in 0..sheet1.height() {
+        let key = sheet1.get_value((row as u32, 1 as u32)); 
+        let value = sheet1.get_value((row as u32, 2 as u32));
+        if key.is_some() && value.is_some() {
+            values.insert(
+                key.unwrap().to_string(),
+                value.unwrap().to_string(),
+            );
+        } 
+    }
+    for (key, value) in values.iter() {
+        text_string = text_string.replace(key, value);
+    }
+    fs::write(output_path, text_string).expect("Unable to write file");
 }
 fn main() -> iced::Result {
     iced::application(  App::new, App::update, App::view).theme(Theme::Dark).centered().run()
