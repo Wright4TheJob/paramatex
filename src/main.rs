@@ -3,8 +3,8 @@ use std::{fs, path::PathBuf};
 use calamine::{HeaderRow, open_workbook, Ods, Reader};
 use iced::Alignment::Center;
 use iced::widget::{button, center, column, row, text, text_input};
-use iced::{Element, Theme};
-
+use iced::{event::{self, Status},keyboard::{Event::KeyPressed}, Event, Element, Theme};
+use iced::keyboard::key::{Key, Named};
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -85,17 +85,53 @@ impl App {
             Message::OpenTemplate => self.open_filepath(File::Template),
             Message::OpenOutputDirectory => self.open_filepath(File::Output),
             Message::WriteOutput => {
+                
+            if self.state.parameters_path.is_some() && self.state.template_path.is_some() && self.state.output_path.is_some() && self.state.output_filename != "" {
                 let mut output_path = self.state.output_path.clone().unwrap();
                 output_path.push(self.state.output_filename.clone());
                 output_path.push(".tex");
                 substitute(self.state.parameters_path.clone().unwrap(), self.state.template_path.clone().unwrap(), output_path);
+            }
             },
             Message::OutputFilenameUpdated(new_name) => self.state.output_filename = new_name,
         }
     }
 
-pub fn open_filepath(&mut self, filetype: File){
-    match filetype {
+    fn subscription(&self) -> iced::Subscription<Message> {
+        event::listen_with(|event, status, _| match (event, status) {
+            (
+                Event::Keyboard(KeyPressed { 
+                key: Key::Character(key),
+                ..
+            }),
+            Status::Captured,
+            )  => {
+                match key.as_str() {
+                    "p" => Some(Message::OpenParameters),
+                    &_ => None
+                }
+            }, 
+             
+            (
+                Event::Keyboard(KeyPressed {
+                    key: Key::Named(Named::Enter),
+                    ..
+                }),
+                Status::Ignored,
+            ) => Some(Message::WriteOutput),
+            (
+                Event::Keyboard(KeyPressed {
+                    key: Key::Named(Named::Space),
+                    ..
+                }),
+                Status::Ignored,
+            ) => Some(Message::OpenParameters),
+            _ => None,
+        })
+    }
+
+    pub fn open_filepath(&mut self, filetype: File){
+        match filetype {
         File::Parameters => {
             self.state.parameters_path = rfd::FileDialog::new()
                 .add_filter("Spreadsheet Formats",vec!("xlsx", "xls", "ods").as_slice())
@@ -140,5 +176,5 @@ fn substitute(param_path: PathBuf, template_path: PathBuf, output_path: PathBuf)
     fs::write(output_path, text_string).expect("Unable to write file");
 }
 fn main() -> iced::Result {
-    iced::application(  App::new, App::update, App::view).theme(Theme::Dark).centered().run()
+    iced::application(  App::new, App::update, App::view).subscription(App::subscription).theme(Theme::Dark).centered().run()
 }
