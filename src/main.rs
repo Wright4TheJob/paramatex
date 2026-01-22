@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use calamine::{HeaderRow, open_workbook, Ods, Reader};
 use iced::Alignment::Center;
 use iced::widget::{button, center, column, row, text, text_input};
-use iced::{event::{self, Status},keyboard::{Event::KeyPressed}, Event, Element, Theme};
+use iced::{event::{self, Status},keyboard::{Event::KeyPressed}, Event, Element, Theme, Length};
 use iced::keyboard::key::{Key, Named};
 
 #[derive(Debug, Clone)]
@@ -56,25 +56,46 @@ impl App {
         center(
             column![
                 row![
-                    button("Select Parameters Spreadsheet").on_press(Message::OpenParameters),
-                    text(format!("{:?}",self.state.parameters_path))]]
+                    button("Select Parameters Spreadsheet")
+                        .width(Length::FillPortion(1))
+                        .on_press(Message::OpenParameters),
+                    text(format!("{:?}",self.state.parameters_path))
+                        .width(Length::FillPortion(1))
+                    ]
+                    .spacing(20)
+                ].spacing(20)
                 .push(
                     row![
-                        button("Select LaTeX Template").on_press(Message::OpenTemplate),
-                        text(format!("{:?}",self.state.template_path))])
+                        button("Select LaTeX Template")
+                            .width(Length::FillPortion(1))
+                            .on_press(Message::OpenTemplate),
+                        text(format!("{:?}",self.state.template_path))
+                            .width(Length::FillPortion(1))
+                    ]
+                    .spacing(20)
+                )
                 .push(
                     row![
-                    button("Select Output Directory").on_press(Message::OpenOutputDirectory),
-                    text(format!("{:?}",self.state.output_path))]
+                    button("Select Output Directory")
+                        .width(Length::FillPortion(1))
+                        .on_press(Message::OpenOutputDirectory),
+                    text(format!("{:?}",self.state.output_path))
+                        .width(Length::FillPortion(1))
+                    ]
+                    .spacing(20)
                 )
                 .push(
                     row![
                         text("Output filename: "),
-                        text_input("Filename", &self.state.output_filename).on_input(Message::OutputFilenameUpdated)
+                        text_input("Filename", &self.state.output_filename)
+                            .width(Length::FillPortion(1))
+                            .on_input(Message::OutputFilenameUpdated)
                     ]
+                    .spacing(20)
                 )
                 .push(write_button)
                 .align_x(Center),
+                
         )
         .into()
     }
