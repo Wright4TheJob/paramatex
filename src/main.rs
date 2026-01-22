@@ -3,9 +3,9 @@ use std::{fs, path::PathBuf};
 use calamine::{HeaderRow, open_workbook, Ods, Reader};
 use iced::Alignment::Center;
 use iced::widget::{button, center, column, row, text, text_input};
+// use iced::widget::operation::focus;
 use iced::{event::{self, Status},keyboard::{Event::KeyPressed}, Event, Element, Theme, Length};
 use iced::keyboard::key::{Key, Named};
-
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 enum Error {
@@ -26,6 +26,7 @@ enum Message {
     OpenTemplate,
     OpenOutputDirectory,
     OutputFilenameUpdated(String),
+    // FocusFilenameField,
 }
 
 #[derive(Default, Clone)]
@@ -56,7 +57,7 @@ impl App {
         center(
             column![
                 row![
-                    button("Select Parameters Spreadsheet")
+                    button("Select Parameters Spreadsheet (p)")
                         .width(Length::FillPortion(1))
                         .on_press(Message::OpenParameters),
                     text(format!("{:?}",self.state.parameters_path))
@@ -66,7 +67,7 @@ impl App {
                 ].spacing(20)
                 .push(
                     row![
-                        button("Select LaTeX Template")
+                        button("Select LaTeX Template (t)")
                             .width(Length::FillPortion(1))
                             .on_press(Message::OpenTemplate),
                         text(format!("{:?}",self.state.template_path))
@@ -76,7 +77,7 @@ impl App {
                 )
                 .push(
                     row![
-                    button("Select Output Directory")
+                    button("Select Output Directory (o)")
                         .width(Length::FillPortion(1))
                         .on_press(Message::OpenOutputDirectory),
                     text(format!("{:?}",self.state.output_path))
@@ -89,6 +90,7 @@ impl App {
                         text("Output filename: "),
                         text_input("Filename", &self.state.output_filename)
                             .width(Length::FillPortion(1))
+                            .id("filename")
                             .on_input(Message::OutputFilenameUpdated)
                     ]
                     .spacing(20)
@@ -115,6 +117,7 @@ impl App {
             }
             },
             Message::OutputFilenameUpdated(new_name) => self.state.output_filename = new_name,
+            // Message::FocusFilenameField =>  focus("filename")
         }
     }
 
@@ -125,10 +128,13 @@ impl App {
                 key: Key::Character(key),
                 ..
             }),
-            Status::Captured,
+            Status::Ignored,
             )  => {
                 match key.as_str() {
                     "p" => Some(Message::OpenParameters),
+                    "t" => Some(Message::OpenTemplate),
+                    "o" => Some(Message::OpenOutputDirectory),
+                    // "n" => Some(Message::FocusFilenameField),
                     &_ => None
                 }
             }, 
@@ -140,13 +146,6 @@ impl App {
                 }),
                 Status::Ignored,
             ) => Some(Message::WriteOutput),
-            (
-                Event::Keyboard(KeyPressed {
-                    key: Key::Named(Named::Space),
-                    ..
-                }),
-                Status::Ignored,
-            ) => Some(Message::OpenParameters),
             _ => None,
         })
     }
